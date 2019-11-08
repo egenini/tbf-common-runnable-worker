@@ -1,0 +1,18 @@
+
+
+# Si no se configura un worker se creará un RunnableWorker sin un worker que realice el trabajo, quien use este Runnable deberá setear el worker
+## si no lo hace el runnable va a ejecutar pero no realizará ningún trabajo. 
+
+## si se configura esta sección creará un pool por cada clave que se encuentre en el paquete
+[workers]
+#package=ar.com...
+
+# configuración del pool. GenericKeyedObjectPoolConfig
+# las propiedades se establecen por reflexión por lo tanto se pueden agregar y no es necesario tocar el código fuente.
+[pool]
+maxIdlePerKey=10
+#maxTotal=
+maxTotalPerKey=10
+#minIdle=
+minIdlePerKey=5
+
