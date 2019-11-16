@@ -3,21 +3,33 @@ package ar.com.tbf.runnable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ar.com.tbf.runnable.pool.RunnableWorkerPool;
+
 /**
  * Es una clase genérica que se ejecuta como un thread, en cada ciclo de su ejecución llama a un método work de otra clase.
+ * 
+ * Posee comportamiento que sólo se usa cuándo la instancia es PooleableRunnableWorker
  * 
  * @author Edgardo
  *
  */
 public class RunnableWorker implements Runnable {
 
-	private Logger log = LoggerFactory.getLogger(RunnableWorker.class);
-	
+	private Integer id;
+	private Logger  log        = LoggerFactory.getLogger(RunnableWorker.class);
 	private boolean shutdown   = false;
 	private long    waitingFor = 8 * 60 * 60 * 1000;
 	private Thread  thread;
-	private Worker  worker = null;
-	private boolean wakeUp = false;
+	protected Worker  worker     = null;
+	private boolean wakeUp     = false;
+	protected Exception error = null;
+	// este atributo tiene valor true si se instancia PooleableRunnableWorker
+	protected boolean pooleable = false;
+	
+	// thread times
+	private long wakeUpTime  = 0;
+	protected long posWorkTime = 0;
+	
 	/**
 	 * Este constructor es para usar en pool, duerme al thread indefinidamente hasta que quien lo use lo despierte.
 	 *  
@@ -25,8 +37,7 @@ public class RunnableWorker implements Runnable {
 	 */
 	public RunnableWorker( Worker worker ){
 
-		this.waitingFor = -1; // inidca que va a dormir de forma indefinida.
-		this.worker = worker;
+		this( worker, -1);
 	}
 	
 	public RunnableWorker( Worker worker, long timeToWait ){
@@ -55,7 +66,6 @@ public class RunnableWorker implements Runnable {
 
 			this.thread.start();
 		}
-		
 	}
 
 	@Override
@@ -68,6 +78,9 @@ public class RunnableWorker implements Runnable {
 				try {
 					synchronized (this) {
 						if( this.waitingFor == -1 ){
+							
+							// si usa pool es en este momento que considera si es oportuno volver.
+							this.returnToPool();
 							this.wait();
 						}
 						else{
@@ -77,11 +90,28 @@ public class RunnableWorker implements Runnable {
 				} catch (InterruptedException e) {
 				}
 			}
-
+			
+			wakeUpTime = 0;
+			error      = null;
+			
 			if( ! this.isShutdown() ){
 
 				if( worker != null ){
-					worker.work();
+					
+					try {
+						
+						wakeUpTime = System.currentTimeMillis();
+						
+						worker.work();
+						
+					}catch(Exception e ) {
+						
+						error = e;
+					}
+					finally {
+						
+						postWork();
+					}
 				}
 				wakeUp = false;
 			}
@@ -107,6 +137,43 @@ public class RunnableWorker implements Runnable {
 		this.setShutdown(true);
 	}
 	
+	public Worker getWorker() {
+		return worker;
+	}
+
+	public void setWorker(Worker worker) {
+		this.worker = worker;
+	}
+	
+	/**
+	 * Este método es sobreescrito por PooleableRunnableWorker para retornar el objeto al pool.
+	 * 
+	 */
+	protected void returnToPool() {
+		
+	}
+
+	public void postWork() {
+		
+		this.posWorkTime = System.currentTimeMillis();
+	}
+
+
+	public String printStatus() {
+		
+		return "{ \"has_error\": "+ (this.error != null ? "true" : "false") +", \"wakeUpTime\": "+ this.wakeUpTime +", \"posWorkTime\":"+ this.posWorkTime +"}";
+	}
+
+	public Integer getId() {
+		return id;
+	}
+
+	public RunnableWorker setId(Integer id) {
+		this.id = id;
+		return this;
+	}
+	
+
 	public boolean isShutdown() {
 		return shutdown;
 	}
@@ -124,11 +191,20 @@ public class RunnableWorker implements Runnable {
 		this.waitingFor = waitingFor;
 	}
 
-	public Worker getWorker() {
-		return worker;
+	public long getWakeUpTime() {
+		return wakeUpTime;
 	}
 
-	public void setWorker(Worker worker) {
-		this.worker = worker;
+	public void setWakeUpTime(long wakeUpTime) {
+		this.wakeUpTime = wakeUpTime;
 	}
+
+	public long getPosWorkTime() {
+		return posWorkTime;
+	}
+
+	public void setPosWorkTime(long posWorkTime) {
+		this.posWorkTime = posWorkTime;
+	}
+	
 }

@@ -3,9 +3,7 @@ package ar.com.tbf.runnable.pool;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 import org.apache.commons.pool2.KeyedObjectPool;
@@ -21,7 +19,7 @@ public class RunnableWorkerPool {
 
 	private KeyedObjectPool<String, RunnableWorker> pool;
 
-    private static class SingletonHolder {
+	private static class SingletonHolder {
 
     	public static final RunnableWorkerPool INSTANCE = new RunnableWorkerPool();
     }
@@ -71,6 +69,7 @@ public class RunnableWorkerPool {
      */
     public Object getObject( String objectName ) throws NoSuchElementException, IllegalStateException, Exception{
     	
+    	// no usar este método con synchronized porque se bloquea.
     	return this.getPool().borrowObject(objectName);
     }
 
@@ -80,11 +79,12 @@ public class RunnableWorkerPool {
      * @param runnableWorker
      * @throws Exception
      */
-	public void returnObject(String poolKey, RunnableWorker runnableWorker) throws Exception {
+    /* dejo de usarlo para probar si este método no está provocando que algunos threads se pisen al ingresar al pool
+	public synchronized void returnObject(String poolKey, RunnableWorker runnableWorker) throws Exception {
 
 		this.getPool().returnObject(poolKey, runnableWorker);
 	}
-
+	*/
 	/**
      * 
      * @return the org.apache.commons.pool.KeyedObjectPool class
@@ -104,18 +104,23 @@ public class RunnableWorkerPool {
     	Iterator<PropsEntry> it = p.entries()
                 .section("pool")
                 .iterator();
+    	
     	PropsEntry prop;
+    	String[] propKey;
     	
     	while( it.hasNext() ){
     		
     		prop = it.next();
+    		propKey = prop.getKey().split("\\.");
     		
-    		if( BeanUtil.pojo.hasProperty(config, prop.getKey() )){
+    		if( BeanUtil.pojo.hasProperty(config, propKey[1] )){
     			
-    			BeanUtil.pojo.setProperty(config, prop.getKey(), prop.getValue() );
+    			BeanUtil.pojo.setProperty(config, propKey[1], prop.getValue() );
     		}
     	}
-
+    	
+    	System.out.println( "maxTotal=" + config.getMaxTotal() +", maxTotalPerKey="+ config.getMaxTotalPerKey() +", minIdlePerKey="+ config.getMinIdlePerKey() +", testOnBorrow="+ config.getTestOnBorrow() );
+    	
     	this.startPool(config);
     }
     
@@ -123,7 +128,8 @@ public class RunnableWorkerPool {
     
     	pool =  new GenericKeyedObjectPool(new RunnableWorkerFactory(),config);
     }
-	public static void main(String[] args) {
+
+    public static void main(String[] args) {
 
     	Props p = new Props();
     	p.setAppendDuplicateProps(true);

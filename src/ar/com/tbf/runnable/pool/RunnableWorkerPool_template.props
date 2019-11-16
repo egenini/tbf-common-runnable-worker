@@ -5,14 +5,25 @@
 
 ## si se configura esta sección creará un pool por cada clave que se encuentre en el paquete
 [workers]
+# pueden paquetes de las cuales se levantan todas las clases para crear un pool por cada una
 #package=ar.com...
+
+# o pueden ser clases
+#class=ar.com.tbf.SomeClass
+#class=ar.com.tbf.SomeClass2
 
 # configuración del pool. GenericKeyedObjectPoolConfig
 # las propiedades se establecen por reflexión por lo tanto se pueden agregar y no es necesario tocar el código fuente.
 [pool]
-maxIdlePerKey=10
-#maxTotal=
+# límite en el número de instancias de objeto asignadas por clave.
 maxTotalPerKey=10
-#minIdle=
+# límite en el número de instancias "inactivas" por clave.
+maxIdlePerKey=10
+# el número mínimo de objetos inactivos para mantener en cada uno de los subgrupos con clave.
 minIdlePerKey=5
 
+# es necesario establecer el máximo total entre todos los pools definidos
+maxTotal=20
+#minIdle=
+
+testOnBorrow=true
